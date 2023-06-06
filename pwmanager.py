@@ -11,9 +11,10 @@ class PasswordManager(QWidget):
         self.init_ui()
         self.create_database()
         
-        self.key = Fernet.generate_key()
+        self.load_key()
 
     def init_ui(self):
+        self.setGeometry(200, 200, 400, 200)
         self.setWindowTitle('Password Manager')
         layout = QVBoxLayout()
 
@@ -39,12 +40,23 @@ class PasswordManager(QWidget):
         layout.addWidget(get_button)
 
         self.setLayout(layout)
+        
+    def save_key(self):
+        with open('key.key', 'wb') as key_file:
+            key_file.write(self.key)
+
+    def load_key(self):
+        try:
+            with open('key.key', 'rb') as key_file:
+                self.key = key_file.read()
+        except FileNotFoundError:
+            self.key = Fernet.generate_key()
+            self.save_key()
 
     def create_database(self):
         conn = sqlite3.connect('passwords.db')
         c = conn.cursor()
 
-        # Create the table if it doesn't exist
         c.execute('''CREATE TABLE IF NOT EXISTS passwords
                      (username TEXT PRIMARY KEY, password TEXT)''')
 
@@ -55,7 +67,6 @@ class PasswordManager(QWidget):
         conn = sqlite3.connect('passwords.db')
         c = conn.cursor()
 
-        # Check if the username exists in the database
         c.execute("SELECT * FROM passwords WHERE username=?", (username,))
         result = c.fetchone()
 
@@ -72,7 +83,6 @@ class PasswordManager(QWidget):
         conn = sqlite3.connect('passwords.db')
         c = conn.cursor()
 
-        # Insert the username and encoded password into the database
         c.execute("INSERT INTO passwords VALUES (?, ?)", (username, encoded_password))
 
         conn.commit()
@@ -82,7 +92,6 @@ class PasswordManager(QWidget):
         conn = sqlite3.connect('passwords.db')
         c = conn.cursor()
 
-        # Retrieve the encoded password from the database
         c.execute("SELECT password FROM passwords WHERE username=?", (username,))
         result = c.fetchone()
 
@@ -101,13 +110,11 @@ class PasswordManager(QWidget):
     def save_password(self):
         username = self.username_input.text()
         password = self.password_input.text()
-
         # Check if the username already exists in the database
         if self.check_username_exists(username):
             QMessageBox.warning(self, 'Username Exists', 'Username already exists. Please choose a different username.')
             return
 
-        # Encode the password and store it in the database
         encoded_password = self.encode_password(password)
         self.store_password(username, encoded_password)
 
@@ -122,8 +129,7 @@ class PasswordManager(QWidget):
         if encoded_password:
             # Decode the password
             password = self.decode_password(encoded_password)
-            print(password)
-            # Copy the password to the clipboard
+            # print(password)
             clipboard = QApplication.clipboard()
             clipboard.setText(password, QClipboard.Clipboard)
             clipboard.setText(password, QClipboard.Selection)
